@@ -4,7 +4,7 @@ use crate::token::Token;
 
 pub struct Lexer {
     content: String,
-    index: usize,
+    next_index: usize,
     line: usize,
     column: usize,
     current_char: Option<char>,
@@ -31,7 +31,7 @@ impl Lexer {
     pub fn new(content: String) -> Self {
         Self {
             content,
-            index: 0,
+            next_index: 0,
             line: 1,
             column: 1,
             current_char: None,
@@ -39,19 +39,22 @@ impl Lexer {
     }
 
     fn read_next(&mut self) -> Option<char> {
+        let prev_char = self.current_char;
         self.current_char = None;
-        if self.index >= self.content.len() {
-            return self.current_char;
+        if self.next_index >= self.content.len() {
+            return None;
         }
 
-        let c = self.content.chars().nth(self.index)?;
-        self.index += 1;
+        let c = self.content.chars().nth(self.next_index)?;
+        self.next_index += 1;
 
-        if c == '\n' {
-            self.line += 1;
-            self.column = 1;
-        } else if c != '\r' {
-            self.column += 1;
+        if let Some(c) = prev_char {
+            if c == '\n' {
+                self.line += 1;
+                self.column = 1;
+            } else if c != '\r' {
+                self.column += 1;
+            }
         }
 
         self.current_char = Some(c);
@@ -93,20 +96,20 @@ impl Lexer {
         let c = self.current_char?;
         let mut context = TokenContext {
             source_file: "<memory>".to_owned(),
-            index_start: self.index - 1,
-            index_end: self.index,
+            index_start: self.next_index - 1,
+            index_end: self.next_index,
             line_start: self.line,
             column_start: self.column,
             line_end: self.line,
-            column_end: self.column + 1,
+            column_end: self.column,
         };
 
         let token = match c {
             ';' => Token::SemiColon,
             ':' => {
                 self.read_next();
-                self.skip_whitespaces();
                 if let Some('=') = self.current_char {
+                    self.read_next();
                     Token::Walrus
                 } else {
                     Token::Colon
@@ -122,12 +125,12 @@ impl Lexer {
         };
 
         context.line_end = self.line;
-        context.column_end = self.column + 1;
+        context.column_end = self.column;
 
         // Some symbols do not run read_next(),
         // lets do that here.
         // TODO: Figure out a cleaner solution
-        if context.index_end == self.index {
+        if context.index_end == self.next_index {
             self.read_next();
         }
 
