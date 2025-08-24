@@ -1,0 +1,61 @@
+### Declarations and Assignments ###
+# Functions, variables, lambdas, etc, are all declared
+# the same way. Using the declaration operator `:`.
+# They can also be declared and assigned in one go,
+# by combining the declaration operator `:` and the
+# assignment operator `=`.
+a : i32;      # Declaration
+a = 10;       # Assignment
+b : i32 = 10; # Declaration and assignment
+c := 10;      # Declaration and assignment, with type inference
+
+# External function declaration
+extern puts : (str: *char) i32;
+
+# Function declaration and definition
+main := (argc: i32, argv: **char) i32 {
+	# here goes the function's code...
+}
+
+### Strings ###
+# The default formatting for strings is UTF-8.
+# TODO: Figure out how to handle multiple encodings
+#       (Binary, UTF-16, ...)
+# TODO: Figure out how to deal with string length
+#       and C compatibility (null terminator).
+# All strings will start and end
+# with double quotes.
+# Example:
+mystr := "hello!"
+
+# For strings that must include double
+# quotes in their contents, you can use
+# and odd-lengthed string start and ending.
+# Example:
+mystr := """""
+	this string has quotes (") in its content!
+	it even has triple quotes: """
+"""""
+# "Why odd-lengthed string start/ending?"
+# Because it's ambiguous to interpret an
+# even-lengthed string quotation boundary.
+
+# You can also use backslash to escape the quote
+# and other characters
+mystr := "hello! this string has a quote (\")";
+
+### Comments ###
+# Single line comments start with one hash (#).
+# <- Example
+
+# Multiline comments start with more than one hash
+# and end in the same amount of hashes they started with.
+# Example:
+
+#####
+this is a
+multiline
+comment!
+it started with 5 hashes,
+so it will end in 5 hashes.
+#####
