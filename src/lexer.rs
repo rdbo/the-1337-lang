@@ -194,6 +194,7 @@ impl Lexer {
 
         let token = match c {
             ';' => Token::SemiColon,
+
             ':' => {
                 self.read_next();
                 if let Some('=') = self.current_char {
@@ -204,10 +205,15 @@ impl Lexer {
                 }
             }
             '=' => Token::Assign,
+
             '(' => Token::LeftParen,
             ')' => Token::RightParen,
+
             '{' => Token::LeftCurly,
             '}' => Token::RightCurly,
+
+            '*' => Token::Times,
+
             '"' => self.tokenize_string()?,
             '0'..='9' => self.tokenize_number()?,
             'a'..='z' | 'A'..='Z' | '_' => self.tokenize_identifier_or_keyword()?,
