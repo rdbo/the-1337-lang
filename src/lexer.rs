@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::token::Token;
+use crate::{NumberFormat, token::Token};
 
 pub struct Lexer {
     content: String,
@@ -74,7 +74,8 @@ impl Lexer {
     }
 
     fn tokenize_identifier_or_keyword(&mut self) -> Option<Token> {
-        let keywords: HashMap<&str, Token> = HashMap::from([("extern", Token::KwExtern)]);
+        let keywords: HashMap<&str, Token> =
+            HashMap::from([("extern", Token::KwExtern), ("return", Token::KwReturn)]);
         let mut ident = self.current_char?.to_string();
         while let Some(c) = self.read_next() {
             match c {
@@ -137,6 +138,47 @@ impl Lexer {
         Some(Token::String(string_content))
     }
 
+    fn tokenize_number(&mut self) -> Option<Token> {
+        let formats: HashMap<char, NumberFormat> = HashMap::from([
+            ('x', NumberFormat::Hex),
+            ('o', NumberFormat::Octal),
+            ('b', NumberFormat::Binary),
+        ]);
+        let mut value = String::from(self.current_char?);
+        let mut format = NumberFormat::Decimal;
+        let mut is_float = false;
+        while let Some(c) = self.read_next() {
+            match c {
+                'x' | 'X' | 'b' | 'B' | 'o' | 'O' if value == "0" => {
+                    format = formats
+                        .get(&c.to_ascii_lowercase())
+                        .expect(format!("Missing expected number format: {}", c).as_str())
+                        .to_owned();
+                }
+                '.' if !is_float => {
+                    is_float = true;
+                    value.push(c)
+                }
+                '0' | '1' => value.push(c),
+                '2'..='7' if format != NumberFormat::Binary => value.push(c),
+                '8'..='9' if format != NumberFormat::Binary && format != NumberFormat::Octal => {
+                    value.push(c)
+                }
+                'a'..='f' | 'A'..'F' if format == NumberFormat::Hex => value.push(c),
+                _ => {
+                    // TODO: Handle invalid numbers
+                    break;
+                }
+            }
+        }
+
+        Some(Token::Number {
+            value,
+            format,
+            is_float,
+        })
+    }
+
     pub fn tokenize(&mut self) -> Option<TokenInfo> {
         self.skip_whitespaces();
         let c = self.current_char?;
@@ -167,6 +209,7 @@ impl Lexer {
             '{' => Token::LeftCurly,
             '}' => Token::RightCurly,
             '"' => self.tokenize_string()?,
+            '0'..='9' => self.tokenize_number()?,
             'a'..='z' | 'A'..='Z' | '_' => self.tokenize_identifier_or_keyword()?,
             _ => Token::Unknown(c.to_string()),
         };

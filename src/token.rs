@@ -1,4 +1,12 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NumberFormat {
+    Decimal,
+    Hex,
+    Octal,
+    Binary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Unknown(String),
     Comment(String),
@@ -6,6 +14,11 @@ pub enum Token {
     // Expressions
     Identifier(String),
     String(String),
+    Number {
+        value: String,
+        format: NumberFormat,
+        is_float: bool,
+    },
 
     // Symbols
     SemiColon,
@@ -27,4 +40,5 @@ pub enum Token {
 
     // Keywords
     KwExtern,
+    KwReturn,
 }
