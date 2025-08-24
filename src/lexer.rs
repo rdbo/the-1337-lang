@@ -91,6 +91,52 @@ impl Lexer {
         )
     }
 
+    fn tokenize_string(&mut self) -> Option<Token> {
+        let mut quote_count: usize = 1;
+        while let Some(c) = self.read_next() {
+            if c != '"' {
+                break;
+            }
+
+            quote_count += 1;
+        }
+
+        if quote_count == 2 {
+            return Some(Token::String("".to_owned()));
+        } else if quote_count & 1 == 0 {
+            // Even-lengthed long quotes not allowed!
+            // They are ambiguous.
+            return Some(Token::Unknown('"'.to_string().repeat(quote_count)));
+        }
+
+        let mut end_quote_count = 0;
+        let mut string_content = String::new();
+        while end_quote_count != quote_count {
+            let Some(c) = self.current_char else {
+                return Some(Token::Unknown(format!(
+                    "{}{}",
+                    '"'.to_string().repeat(quote_count),
+                    string_content
+                )));
+            };
+
+            string_content.push(c);
+
+            if c == '"' {
+                end_quote_count += 1;
+            } else {
+                end_quote_count = 0;
+            }
+
+            self.read_next();
+        }
+
+        // Remove trailing double quotes from string content
+        string_content.truncate(string_content.len() - end_quote_count);
+
+        Some(Token::String(string_content))
+    }
+
     pub fn tokenize(&mut self) -> Option<TokenInfo> {
         self.skip_whitespaces();
         let c = self.current_char?;
@@ -120,6 +166,7 @@ impl Lexer {
             ')' => Token::RightParen,
             '{' => Token::LeftCurly,
             '}' => Token::RightCurly,
+            '"' => self.tokenize_string()?,
             'a'..='z' | 'A'..='Z' | '_' => self.tokenize_identifier_or_keyword()?,
             _ => Token::Unknown(c.to_string()),
         };
