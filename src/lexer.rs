@@ -171,15 +171,17 @@ impl Lexer {
             _ => Token::Unknown(c.to_string()),
         };
 
-        context.line_end = self.line;
-        context.column_end = self.column;
-
         // Some symbols do not run read_next(),
-        // lets do that here.
+        // even though they should, lets do that here.
         // TODO: Figure out a cleaner solution
-        if context.index_end == self.next_index {
+        if self.next_index == context.index_start + 1 {
             self.read_next();
         }
+
+        // Adjust context values
+        context.index_end = self.next_index - 1;
+        context.line_end = self.line;
+        context.column_end = self.column;
 
         Some(TokenInfo { token, context })
     }
