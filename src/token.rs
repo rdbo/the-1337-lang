@@ -38,6 +38,8 @@ pub enum Token {
     Times,
     DividedBy,
 
+    Comma,
+
     // Keywords
     KwExtern,
     KwReturn,

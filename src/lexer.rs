@@ -27,6 +27,9 @@ pub struct TokenInfo {
     pub context: TokenContext,
 }
 
+// TODO: Consider not allowing private tokenize functions
+//       to return an optional. Instead, they may either
+//       return the expected token or Token::Unknown
 impl Lexer {
     pub fn new(content: String) -> Self {
         Self {
@@ -213,6 +216,8 @@ impl Lexer {
             '}' => Token::RightCurly,
 
             '*' => Token::Times,
+
+            ',' => Token::Comma,
 
             '"' => self.tokenize_string()?,
             '0'..='9' => self.tokenize_number()?,

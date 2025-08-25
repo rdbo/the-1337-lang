@@ -3,8 +3,8 @@ pub enum Type {
     Common(String),
     Pointer(Box<Type>),
     Function {
-        params: Vec<Type>,
-        return_type: Option<Box<Type>>,
+        params: Vec<(String, Type)>,
+        return_type: Box<Type>,
     },
 }
 
@@ -22,8 +22,8 @@ pub enum Statement {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Identifier(String),
-    Function {
-        params: Vec<Type>,
+    FunctionDefinition {
+        params: Vec<(String, Type)>,
         return_type: Option<Type>,
         expressions: Vec<Expression>,
     },
@@ -43,6 +43,7 @@ pub enum Expression {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Node {
+    Invalid,
     Statement(Statement),
     Expression(Expression),
 }
