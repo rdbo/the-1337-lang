@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Common(String),
     Pointer(Box<Type>),
@@ -7,6 +8,7 @@ pub enum Type {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
     Extern {
         identifier: String,
@@ -17,12 +19,17 @@ pub enum Statement {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Identifier(String),
     Function {
         params: Vec<Type>,
         return_type: Option<Type>,
         expressions: Vec<Expression>,
+    },
+    Declare {
+        identifier: String,
+        declared_type: Type,
     },
     DeclareAndAssign {
         identifier: String,
@@ -34,7 +41,8 @@ pub enum Expression {
     },
 }
 
-pub enum SyntaxNode {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Node {
     Statement(Statement),
     Expression(Expression),
 }
