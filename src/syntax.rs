@@ -1,3 +1,5 @@
+// TODO: Don't require a Type for void
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Common(String),
