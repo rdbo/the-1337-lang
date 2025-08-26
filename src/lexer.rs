@@ -10,6 +10,7 @@ pub struct Lexer {
     current_char: Option<char>,
 }
 
+// TODO: Move source_file to parser context
 #[derive(Debug, Clone)]
 pub struct TokenContext {
     pub source_file: String,

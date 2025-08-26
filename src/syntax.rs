@@ -1,5 +1,4 @@
 // TODO: Don't require a Type for void
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Common(String),
@@ -27,7 +26,7 @@ pub enum Expression {
     FunctionDefinition {
         params: Vec<(String, Type)>,
         return_type: Option<Type>,
-        expressions: Vec<Expression>,
+        code: Vec<Node>,
     },
     Declare {
         identifier: String,

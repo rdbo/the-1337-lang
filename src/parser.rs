@@ -38,7 +38,7 @@ impl Parser {
         let mut params: Vec<(String, Type)> = Vec::new();
         loop {
             // TODO: Deny right parenthesis after comma
-            let token = self.next_token()?.to_owned();
+            let token = self.next_token_owned()?;
             if matches!(token, Token::RightParen) {
                 break;
             }
@@ -71,9 +71,9 @@ impl Parser {
     }
 
     fn parse_type(&mut self) -> Option<Type> {
-        let token = self.next_token()?;
+        let token = self.next_token_owned()?;
         let t = match token {
-            Token::Identifier(s) => Type::Common(s.to_owned()),
+            Token::Identifier(s) => Type::Common(s),
             Token::Times => Type::Pointer(Box::new(self.parse_type()?)),
             Token::LeftParen => self.parse_function_type()?,
             _ => return None,
@@ -82,7 +82,7 @@ impl Parser {
         Some(t)
     }
 
-    pub fn parse_extern(&mut self) -> Node {
+    fn parse_extern(&mut self) -> Node {
         let Some(Token::Identifier(identifier)) = self.next_token_owned() else {
             return Node::Invalid;
         };
@@ -92,6 +92,9 @@ impl Parser {
         let Some(declared_type) = self.parse_type() else {
             return Node::Invalid;
         };
+        let Some(Token::SemiColon) = self.next_token() else {
+            return Node::Invalid;
+        };
 
         Node::Statement(Statement::Extern {
             identifier,
@@ -99,18 +102,67 @@ impl Parser {
         })
     }
 
+    fn parse_parenthesis_expression(&mut self) -> Option<Expression> {
+        let token = self.next_token()?;
+        match token {
+            Token::RightParen => {
+                let return_type = self.parse_type();
+
+                Some(Expression::FunctionDefinition {
+                    params: vec![],
+                    return_type,
+                    code: vec![],
+                })
+            }
+
+            _ => None,
+        }
+    }
+
+    fn parse_expression(&mut self) -> Option<Expression> {
+        let token = self.next_token()?;
+        match token {
+            Token::LeftParen => self.parse_parenthesis_expression(),
+            _ => None,
+        }
+    }
+
+    fn parse_declare_and_assign(&mut self, identifier: String) -> Node {
+        let Some(value) = self.parse_expression() else {
+            return Node::Invalid;
+        };
+        let value = Box::new(value);
+        Node::Expression(Expression::DeclareAndAssign { identifier, value })
+    }
+
+    fn parse_identifier(&mut self, identifier: String) -> Node {
+        let Some(token) = self.next_token() else {
+            return Node::Invalid;
+        };
+
+        match token {
+            Token::Walrus => self.parse_declare_and_assign(identifier),
+            _ => Node::Invalid,
+        }
+    }
+
     pub fn parse(&mut self) -> Option<NodeInfo> {
         // Push new parsing depth for this (sub)node
         self.pending_tokens.push(vec![]);
 
-        let next_token = self.next_token()?;
-        let node = match next_token {
+        let token = self.next_token_owned()?;
+
+        let node = match token {
             Token::KwExtern => self.parse_extern(),
+            Token::Identifier(ident) => self.parse_identifier(ident),
             _ => Node::Invalid,
         };
 
         // Pop current parsing depth
-        let tokens: Vec<TokenInfo> = self.pending_tokens.pop()?;
+        let tokens: Vec<TokenInfo> = self
+            .pending_tokens
+            .pop()
+            .expect("Missing expected token list for node");
 
         Some(NodeInfo { node, tokens })
     }
