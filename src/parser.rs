@@ -1,169 +1,38 @@
 use crate::{Expression, Lexer, Node, Statement, Token, TokenInfo, Type};
 
 pub struct Parser {
-    lexer: Lexer,
-    pending_tokens: Vec<Vec<TokenInfo>>,
+    tokens: Vec<Token>,
+    index: usize,
 }
 
-#[derive(Debug, Clone)]
-pub struct NodeInfo {
-    pub node: Node,
-    pub tokens: Vec<TokenInfo>,
+pub struct Context {
+    index_start: usize,
 }
 
 impl Parser {
-    pub fn new(content: String) -> Self {
-        Self {
-            lexer: Lexer::new(content),
-            pending_tokens: vec![],
-        }
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Self { tokens, index: 0 }
     }
 
-    fn next_token_info(&mut self) -> Option<&TokenInfo> {
-        let token = self.lexer.tokenize()?;
-        let last_depth = self.pending_tokens.last_mut()?;
-        last_depth.push(token);
-        last_depth.last()
+    fn skip(&mut self, count: usize) {
+        self.index += count;
     }
 
-    fn next_token(&mut self) -> Option<&Token> {
-        self.next_token_info().and_then(|x| Some(&x.token))
+    fn peek(&self, index: usize) -> Option<Token> {
+        self.tokens.get(index).map(|x| x.to_owned())
     }
 
-    fn next_token_owned(&mut self) -> Option<Token> {
-        self.next_token().and_then(|x| Some(x.to_owned()))
+    fn current(&self) -> Option<Token> {
+        self.peek(self.index)
     }
 
-    fn parse_function_type(&mut self) -> Option<Type> {
-        let mut params: Vec<(String, Type)> = Vec::new();
-        loop {
-            // TODO: Deny right parenthesis after comma
-            let token = self.next_token_owned()?;
-            if matches!(token, Token::RightParen) {
-                break;
-            }
-
-            let Token::Identifier(identifier) = &token else {
-                return None;
-            };
-            let Token::Colon = self.next_token()? else {
-                return None;
-            };
-            let param_type = self.parse_type()?;
-
-            params.push((identifier.to_owned(), param_type));
-
-            let token = self.next_token()?;
-            match token {
-                Token::Comma => continue,
-                Token::RightParen => break,
-                _ => return None,
-            }
-        }
-
-        // Parse return type
-        let return_type = Box::new(self.parse_type()?);
-
-        Some(Type::Function {
-            params,
-            return_type,
-        })
+    fn advance(&mut self) -> Option<Token> {
+        let token = self.current()?;
+        self.skip(1);
+        Some(token)
     }
 
-    fn parse_type(&mut self) -> Option<Type> {
-        let token = self.next_token_owned()?;
-        let t = match token {
-            Token::Identifier(s) => Type::Common(s),
-            Token::Times => Type::Pointer(Box::new(self.parse_type()?)),
-            Token::LeftParen => self.parse_function_type()?,
-            _ => return None,
-        };
-
-        Some(t)
-    }
-
-    fn parse_extern(&mut self) -> Node {
-        let Some(Token::Identifier(identifier)) = self.next_token_owned() else {
-            return Node::Invalid;
-        };
-        let Some(Token::Colon) = self.next_token() else {
-            return Node::Invalid;
-        };
-        let Some(declared_type) = self.parse_type() else {
-            return Node::Invalid;
-        };
-        let Some(Token::SemiColon) = self.next_token() else {
-            return Node::Invalid;
-        };
-
-        Node::Statement(Statement::Extern {
-            identifier,
-            declared_type,
-        })
-    }
-
-    fn parse_parenthesis_expression(&mut self) -> Option<Expression> {
-        let token = self.next_token()?;
-        match token {
-            Token::RightParen => {
-                let return_type = self.parse_type();
-
-                Some(Expression::FunctionDefinition {
-                    params: vec![],
-                    return_type,
-                    code: vec![],
-                })
-            }
-
-            _ => None,
-        }
-    }
-
-    fn parse_expression(&mut self) -> Option<Expression> {
-        let token = self.next_token()?;
-        match token {
-            Token::LeftParen => self.parse_parenthesis_expression(),
-            _ => None,
-        }
-    }
-
-    fn parse_declare_and_assign(&mut self, identifier: String) -> Node {
-        let Some(value) = self.parse_expression() else {
-            return Node::Invalid;
-        };
-        let value = Box::new(value);
-        Node::Expression(Expression::DeclareAndAssign { identifier, value })
-    }
-
-    fn parse_identifier(&mut self, identifier: String) -> Node {
-        let Some(token) = self.next_token() else {
-            return Node::Invalid;
-        };
-
-        match token {
-            Token::Walrus => self.parse_declare_and_assign(identifier),
-            _ => Node::Invalid,
-        }
-    }
-
-    pub fn parse(&mut self) -> Option<NodeInfo> {
-        // Push new parsing depth for this (sub)node
-        self.pending_tokens.push(vec![]);
-
-        let token = self.next_token_owned()?;
-
-        let node = match token {
-            Token::KwExtern => self.parse_extern(),
-            Token::Identifier(ident) => self.parse_identifier(ident),
-            _ => Node::Invalid,
-        };
-
-        // Pop current parsing depth
-        let tokens: Vec<TokenInfo> = self
-            .pending_tokens
-            .pop()
-            .expect("Missing expected token list for node");
-
-        Some(NodeInfo { node, tokens })
+    pub fn parse(&mut self) -> Option<Node> {
+        None
     }
 }

@@ -1,3 +1,5 @@
+use phf::phf_map;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumberFormat {
     Decimal,
@@ -44,3 +46,32 @@ pub enum Token {
     KwExtern,
     KwReturn,
 }
+
+pub static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
+    "extern" => Token::KwExtern,
+    "return" => Token::KwReturn
+};
+
+pub static SYMBOLS: phf::Map<&'static str, Token> = phf_map! {
+    ";" => Token::SemiColon,
+
+    ":" => Token::Colon,
+    "=" => Token::Assign,
+    ":=" => Token::Walrus,
+
+    "(" => Token::LeftParen,
+    ")" => Token::RightParen,
+
+    "{" => Token::LeftCurly,
+    "}" => Token::RightCurly,
+
+    "*" => Token::Times,
+
+    "," => Token::Comma
+};
+
+pub static NUMBER_FORMATS: phf::Map<char, NumberFormat> = phf_map! {
+    'x' => NumberFormat::Hex,
+    'o' => NumberFormat::Octal,
+    'b' => NumberFormat::Binary,
+};
