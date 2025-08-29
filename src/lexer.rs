@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{KEYWORDS, NUMBER_FORMATS, NumberFormat, SYMBOLS, token::Token};
 
 #[derive(Debug, Clone)]
@@ -38,14 +36,6 @@ impl Lexer {
 
     fn peek(&self, index: usize) -> Option<char> {
         self.content.chars().nth(index)
-    }
-
-    fn peek_offset(&self, offset: usize) -> Option<char> {
-        self.peek(self.index + offset)
-    }
-
-    fn peek_next(&self) -> Option<char> {
-        self.peek_offset(1)
     }
 
     fn current(&self) -> Option<char> {
