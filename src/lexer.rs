@@ -165,7 +165,7 @@ impl Lexer {
                 '0' | '1' => {}
                 '2'..='7' if format != NumberFormat::Binary => {}
                 '8'..='9' if format != NumberFormat::Binary && format != NumberFormat::Octal => {}
-                'a'..='f' | 'A'..'F' if format == NumberFormat::Hex => {}
+                'a'..='f' | 'A'..='F' if format == NumberFormat::Hex => {}
                 _ => {
                     // TODO: Handle invalid numbers
                     break;
