@@ -1,4 +1,4 @@
-use crate::{Expression, FunctionParam, Lexer, Node, Statement, Token, TokenInfo, Type};
+use crate::{CodeBlock, Expression, FunctionParam, Node, Statement, Token, TokenInfo, Type};
 
 pub struct Parser {
     tokens: Vec<TokenInfo>,
@@ -141,11 +141,19 @@ impl Parser {
         }))
     }
 
+    fn parse_expression(&mut self) -> Result<Expression, String> {
+        todo!("parse_expression()")
+    }
+
     fn parse_identifier(&mut self, ident: String) -> Result<Node, String> {
         let token_info = self.advance_token_info()?;
 
         match token_info.token {
             Token::Colon => self.parse_declaration(ident),
+            Token::Walrus => Ok(Node::Expression(Expression::DeclareAndAssign {
+                identifier: ident,
+                value: Box::new(self.parse_expression()?),
+            })),
             _ => unexpected_token!(token_info),
         }
     }
@@ -167,10 +175,38 @@ impl Parser {
     fn resynchronize(&mut self) {
         while let Ok(token) = self.current() {
             self.skip(1);
-            if let Token::SemiColon = token {
-                break;
+            match token {
+                Token::SemiColon | Token::LeftParen | Token::RightCurly => {
+                    break;
+                }
+                _ => {}
             }
         }
+    }
+
+    fn parse_codeblock(&mut self) -> Result<CodeBlock, String> {
+        let mut nodes = vec![];
+        loop {
+            if let Token::RightCurly = self.current()? {
+                break;
+            }
+
+            let Some(node) = self.parse() else {
+                return Err(format!(
+                    "({}@{}:{}) unexpected end of input while parsing code block",
+                    file!(),
+                    line!(),
+                    column!(),
+                ));
+            };
+            nodes.push(node.node);
+        }
+        Ok(CodeBlock { nodes })
+    }
+
+    fn parse_codeblock_node(&mut self) -> Result<Node, String> {
+        let codeblock = self.parse_codeblock()?;
+        Ok(Node::Expression(Expression::CodeBlock(codeblock)))
     }
 
     pub fn parse(&mut self) -> Option<NodeInfo> {
@@ -180,6 +216,7 @@ impl Parser {
         let result = match token_info.token.to_owned() {
             Token::KwExtern => self.parse_extern(),
             Token::Identifier(ident) => self.parse_identifier(ident),
+            Token::LeftCurly => self.parse_codeblock_node(),
             _ => Err(format!(
                 "({}@{}:{}) invalid root token at '{:?}': {:?}",
                 file!(),

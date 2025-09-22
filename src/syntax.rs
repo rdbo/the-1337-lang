@@ -27,12 +27,17 @@ pub enum Statement {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodeBlock {
+    pub nodes: Vec<Node>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Identifier(String),
     FunctionDefinition {
         params: Vec<FunctionParam>,
         return_type: Option<Type>,
-        code: Vec<Node>,
+        code: CodeBlock,
     },
     Declare {
         identifier: String,
@@ -46,6 +51,7 @@ pub enum Expression {
         identifier: String,
         params: Vec<Expression>,
     },
+    CodeBlock(CodeBlock),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
