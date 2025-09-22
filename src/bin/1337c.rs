@@ -9,25 +9,30 @@ fn main() {
 
     println!("--------------------------------");
     let mut lexer = Lexer::new(source_code);
-    let tokens: Vec<TokenInfo> = vec![];
+    let mut tokens: Vec<TokenInfo> = vec![];
     while let Some(token) = lexer.tokenize() {
         println!("{:?}", token);
+        tokens.push(token);
     }
     println!("--------------------------------");
 
     println!();
 
-    // println!("Parsing...");
-    // println!("================================");
+    println!("Parsing...");
+    println!("================================");
 
-    // let mut parser = Parser::new(tokens);
-    // while let Some(node) = parser.parse() {
-    //     println!("{:?}", node);
-    // }
+    let mut parser = Parser::new(tokens);
+    while let Some(node) = parser.parse() {
+        println!("{:?}", node);
+        // if let Node::Invalid = node.node {
+        //     let parsed = &parser.tokens()[node.start_index..node.end_index];
+        //     println!("Bad parse: {:?}", parsed);
+        // }
+    }
 
-    // println!("================================");
+    println!("================================");
 
-    // println!();
+    println!();
 
     println!("Done");
 }

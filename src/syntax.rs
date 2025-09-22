@@ -1,10 +1,16 @@
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FunctionParam {
+    pub name: String,
+    pub declared_type: Type,
+}
+
 // TODO: Don't require a Type for void
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Common(String),
     Pointer(Box<Type>),
     Function {
-        params: Vec<(String, Type)>,
+        params: Vec<FunctionParam>,
         return_type: Box<Type>,
     },
 }
@@ -24,7 +30,7 @@ pub enum Statement {
 pub enum Expression {
     Identifier(String),
     FunctionDefinition {
-        params: Vec<(String, Type)>,
+        params: Vec<FunctionParam>,
         return_type: Option<Type>,
         code: Vec<Node>,
     },
