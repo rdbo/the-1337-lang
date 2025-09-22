@@ -181,8 +181,12 @@ impl Parser {
             Token::KwExtern => self.parse_extern(),
             Token::Identifier(ident) => self.parse_identifier(ident),
             _ => Err(format!(
-                "invalid root token at '{:?}': {:?}",
-                token_info.start_pos, token_info.token
+                "({}@{}:{}) invalid root token at '{:?}': {:?}",
+                file!(),
+                line!(),
+                column!(),
+                token_info.start_pos,
+                token_info.token
             )),
         };
 
