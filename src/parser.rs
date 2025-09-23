@@ -100,6 +100,10 @@ impl Parser {
                 break;
             };
 
+            if params.len() > 0 {
+                advance_expected!(self, Comma);
+            }
+
             advance_expected!(self, Identifier, name);
             advance_expected!(self, Colon);
 
