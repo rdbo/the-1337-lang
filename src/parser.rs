@@ -1,16 +1,10 @@
-use crate::{CodeBlock, Expression, FunctionParam, Node, Statement, Token, TokenInfo, Type};
+use crate::{
+    CodeBlock, Expression, FunctionParam, Node, NodeInfo, Statement, Token, TokenInfo, Type,
+};
 
 pub struct Parser {
     tokens: Vec<TokenInfo>,
     index: usize,
-}
-
-#[derive(Debug, Clone)]
-pub struct NodeInfo {
-    pub node: Node,
-    pub start_index: usize,
-    pub end_index: usize,
-    pub message: String,
 }
 
 macro_rules! advance_expected {
@@ -54,6 +48,10 @@ impl Parser {
 
     pub fn tokens(&self) -> &Vec<TokenInfo> {
         &self.tokens
+    }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
     }
 
     fn skip(&mut self, count: usize) {
@@ -145,8 +143,41 @@ impl Parser {
         }))
     }
 
+    fn find_token(&mut self, token: Token) -> Option<usize> {
+        for i in self.index..self.tokens.len() {
+            let lookahead_token = self.peek(i).ok()?;
+            if token == lookahead_token {
+                return Some(i);
+            }
+        }
+
+        None
+    }
+
+    fn parse_parenthesis_expression(&mut self) -> Result<Expression, String> {
+        let start_index = self.index;
+        if let Ok(params) = self.parse_function_params()
+            && let Ok(return_type) = self.parse_type()
+        {
+            advance_expected!(self, LeftCurly);
+            let code = self.parse_codeblock()?;
+            return Ok(Expression::FunctionDefinition {
+                params,
+                return_type,
+                code,
+            });
+        }
+        self.set_index(start_index);
+
+        Err("expression not implemented".to_owned())
+    }
+
     fn parse_expression(&mut self) -> Result<Expression, String> {
-        todo!("parse_expression()")
+        let token_info = self.advance_token_info()?;
+        match token_info.token {
+            Token::LeftParen => self.parse_parenthesis_expression(),
+            _ => unexpected_token!(token_info),
+        }
     }
 
     fn parse_identifier(&mut self, ident: String) -> Result<Node, String> {
@@ -203,7 +234,7 @@ impl Parser {
                     column!(),
                 ));
             };
-            nodes.push(node.node);
+            nodes.push(node);
         }
         Ok(CodeBlock { nodes })
     }

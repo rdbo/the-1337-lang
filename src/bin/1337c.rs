@@ -23,7 +23,7 @@ fn main() {
 
     let mut parser = Parser::new(tokens);
     while let Some(node) = parser.parse() {
-        println!("{:?}", node);
+        println!("{:#?}", node);
         // if let Node::Invalid = node.node {
         //     let parsed = &parser.tokens()[node.start_index..node.end_index];
         //     println!("Bad parse: {:?}", parsed);

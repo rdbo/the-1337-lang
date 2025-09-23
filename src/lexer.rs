@@ -1,24 +1,10 @@
-use crate::{KEYWORDS, NUMBER_FORMATS, NumberFormat, SYMBOLS, token::Token};
-
-#[derive(Debug, Clone)]
-pub struct Position {
-    pub index: usize,
-    pub line: usize,
-    pub column: usize,
-}
+use crate::{KEYWORDS, NUMBER_FORMATS, NumberFormat, Position, SYMBOLS, TokenInfo, token::Token};
 
 pub struct Lexer {
     content: String,
     index: usize,
     line: usize,
     column: usize,
-}
-
-#[derive(Debug, Clone)]
-pub struct TokenInfo {
-    pub token: Token,
-    pub start_pos: Position,
-    pub end_pos: Position,
 }
 
 // TODO: Consider not allowing private tokenize functions

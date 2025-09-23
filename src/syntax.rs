@@ -11,7 +11,7 @@ pub enum Type {
     Pointer(Box<Type>),
     Function {
         params: Vec<FunctionParam>,
-        return_type: Box<Type>,
+        return_type: Box<Type>, // TODO: Make it optional
     },
 }
 
@@ -28,7 +28,7 @@ pub enum Statement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CodeBlock {
-    pub nodes: Vec<Node>,
+    pub nodes: Vec<NodeInfo>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +36,7 @@ pub enum Expression {
     Identifier(String),
     FunctionDefinition {
         params: Vec<FunctionParam>,
-        return_type: Option<Type>,
+        return_type: Type, // TODO: Make it optional
         code: CodeBlock,
     },
     Declare {
@@ -59,4 +59,12 @@ pub enum Node {
     Invalid,
     Statement(Statement),
     Expression(Expression),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NodeInfo {
+    pub node: Node,
+    pub start_index: usize,
+    pub end_index: usize,
+    pub message: String,
 }

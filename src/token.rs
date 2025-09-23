@@ -47,6 +47,20 @@ pub enum Token {
     KwReturn,
 }
 
+#[derive(Debug, Clone)]
+pub struct Position {
+    pub index: usize,
+    pub line: usize,
+    pub column: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct TokenInfo {
+    pub token: Token,
+    pub start_pos: Position,
+    pub end_pos: Position,
+}
+
 pub static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
     "extern" => Token::KwExtern,
     "return" => Token::KwReturn
