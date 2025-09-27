@@ -45,6 +45,7 @@ pub enum Token {
     // Keywords
     KwExtern,
     KwReturn,
+    KwFn,
 }
 
 #[derive(Debug, Clone)]
@@ -63,7 +64,8 @@ pub struct TokenInfo {
 
 pub static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
     "extern" => Token::KwExtern,
-    "return" => Token::KwReturn
+    "return" => Token::KwReturn,
+    "fn" => Token::KwFn
 };
 
 pub static SYMBOLS: phf::Map<&'static str, Token> = phf_map! {

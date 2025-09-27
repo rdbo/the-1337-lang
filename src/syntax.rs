@@ -4,6 +4,14 @@ pub struct FunctionParam {
     pub declared_type: Type,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FunctionDefinition {
+    pub identifier: Option<String>,
+    pub params: Vec<FunctionParam>,
+    pub return_type: Option<Type>,
+    pub code: CodeBlock,
+}
+
 // TODO: Don't require a Type for void
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -24,6 +32,12 @@ pub enum Statement {
     Return {
         value: Expression,
     },
+    FunctionDefinition {
+        identifier: String,
+        params: Vec<FunctionParam>,
+        return_type: Option<Type>,
+        code: CodeBlock,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,9 +48,9 @@ pub struct CodeBlock {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Identifier(String),
-    FunctionDefinition {
+    AnonymousFunctionDefinition {
         params: Vec<FunctionParam>,
-        return_type: Type, // TODO: Make it optional
+        return_type: Option<Type>,
         code: CodeBlock,
     },
     Declare {

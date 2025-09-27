@@ -1,5 +1,6 @@
 use crate::{
-    CodeBlock, Expression, FunctionParam, Node, NodeInfo, Statement, Token, TokenInfo, Type,
+    CodeBlock, Expression, FunctionDefinition, FunctionParam, Node, NodeInfo, Statement, Token,
+    TokenInfo, Type,
 };
 
 pub struct Parser {
@@ -90,6 +91,7 @@ impl Parser {
     }
 
     fn parse_function_params(&mut self) -> Result<Vec<FunctionParam>, String> {
+        // advance_expected!(self, LeftParen);
         let mut params: Vec<FunctionParam> = vec![];
         loop {
             let token = self.current()?;
@@ -120,7 +122,8 @@ impl Parser {
         let result = match &token_info.token {
             Token::Identifier(ident) => Ok(Type::Common(ident.to_owned())),
             Token::Times => Ok(Type::Pointer(Box::new(self.parse_type()?))),
-            Token::LeftParen => {
+            Token::KwFn => {
+                advance_expected!(self, LeftParen);
                 let params = self.parse_function_params()?;
                 let return_type = Box::new(self.parse_type()?);
                 Ok(Type::Function {
@@ -155,21 +158,7 @@ impl Parser {
     }
 
     fn parse_parenthesis_expression(&mut self) -> Result<Expression, String> {
-        let start_index = self.index;
-        if let Ok(params) = self.parse_function_params()
-            && let Ok(return_type) = self.parse_type()
-        {
-            advance_expected!(self, LeftCurly);
-            let code = self.parse_codeblock()?;
-            return Ok(Expression::FunctionDefinition {
-                params,
-                return_type,
-                code,
-            });
-        }
-        self.set_index(start_index);
-
-        Err("expression not implemented".to_owned())
+        Err("parenthesis expression not implemented".to_owned())
     }
 
     fn parse_expression(&mut self) -> Result<Expression, String> {
@@ -244,12 +233,56 @@ impl Parser {
         Ok(Node::Expression(Expression::CodeBlock(codeblock)))
     }
 
+    fn parse_function(&mut self) -> Result<FunctionDefinition, String> {
+        let token_info = self.advance_token_info()?.clone();
+        Ok(match token_info.token {
+            Token::Identifier(ident) => {
+                advance_expected!(self, LeftParen);
+                let params = self.parse_function_params()?;
+                let return_type = if !matches!(self.current()?, Token::LeftCurly) {
+                    Some(self.parse_type()?)
+                } else {
+                    None
+                };
+                let code = self.parse_codeblock()?;
+                FunctionDefinition {
+                    identifier: Some(ident.to_owned()),
+                    params,
+                    return_type,
+                    code,
+                }
+            }
+            _ => unexpected_token!(token_info),
+        })
+    }
+
+    fn parse_function_definition(&mut self) -> Result<Node, String> {
+        let function = self.parse_function()?;
+        Ok(match function.identifier {
+            Some(identifier) => Node::Statement(Statement::FunctionDefinition {
+                identifier,
+                params: function.params,
+                return_type: function.return_type,
+                code: function.code,
+            }),
+            None => {
+                // Anonymous function declarations are expressions (lambda fn)
+                Node::Expression(Expression::AnonymousFunctionDefinition {
+                    params: function.params,
+                    return_type: function.return_type,
+                    code: function.code,
+                })
+            }
+        })
+    }
+
     pub fn parse(&mut self) -> Option<NodeInfo> {
         let start_index = self.index;
         let token_info = self.advance_token_info().ok()?;
 
         let result = match token_info.token.to_owned() {
             Token::KwExtern => self.parse_extern(),
+            Token::KwFn => self.parse_function_definition(),
             Token::Identifier(ident) => self.parse_identifier(ident),
             Token::LeftCurly => self.parse_codeblock_node(),
             _ => Err(format!(
