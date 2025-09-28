@@ -2,5 +2,4 @@ extern puts : fn (str: *i8) i32;
 
 fn main() {
 	puts("hello world!");
-	return 0;
 }

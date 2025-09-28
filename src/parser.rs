@@ -125,7 +125,15 @@ impl Parser {
             Token::KwFn => {
                 advance_expected!(self, LeftParen);
                 let params = self.parse_function_params()?;
-                let return_type = Box::new(self.parse_type()?);
+                let save_index = self.index;
+                let return_type = self
+                    .parse_type()
+                    .ok()
+                    .and_then(|x| Some(Box::new(x)))
+                    .or_else(|| {
+                        self.set_index(save_index);
+                        None
+                    });
                 Ok(Type::Function {
                     params,
                     return_type,

@@ -12,14 +12,13 @@ pub struct FunctionDefinition {
     pub code: CodeBlock,
 }
 
-// TODO: Don't require a Type for void
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Common(String),
     Pointer(Box<Type>),
     Function {
         params: Vec<FunctionParam>,
-        return_type: Box<Type>, // TODO: Make it optional
+        return_type: Option<Box<Type>>,
     },
 }
 
