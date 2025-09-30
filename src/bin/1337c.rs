@@ -10,8 +10,11 @@ fn main() {
     println!("--------------------------------");
     let mut lexer = Lexer::new(source_code);
     let mut tokens: Vec<TokenInfo> = vec![];
-    while let Some(token) = lexer.tokenize() {
-        println!("{:?}", token);
+    for i in 0.. {
+        let Some(token) = lexer.tokenize() else {
+            break;
+        };
+        println!("{}: {:?}", i, token);
         tokens.push(token);
     }
     println!("--------------------------------");

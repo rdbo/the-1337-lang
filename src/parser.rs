@@ -1,6 +1,6 @@
 use crate::{
-    CodeBlock, Expression, FunctionDefinition, FunctionParam, Node, NodeInfo, Statement, Token,
-    TokenInfo, Type,
+    CodeBlock, Expression, FunctionDefinition, FunctionParam, Node, NodeInfo, Position, Statement,
+    Token, TokenInfo, Type,
 };
 
 pub struct Parser {
@@ -12,7 +12,7 @@ macro_rules! advance_expected {
     ($parser:ident, $variant:ident) => {
         let old_index = $parser.index;
         $parser.skip(1);
-        let token_info = $parser.peek_token_info(old_index)?;
+        let token_info = $parser.peek_token_info(old_index);
         let Token::$variant = token_info.token.to_owned() else {
             return Err(format!("({}@{}:{}) expected {} at '{:?}', found: {:?}", file!(), line!(), column!(), stringify!($variant), token_info.start_pos, token_info.token));
         };
@@ -21,7 +21,7 @@ macro_rules! advance_expected {
     ($parser:ident, $variant:ident, $($field:ident),+) => {
         let old_index = $parser.index;
         $parser.skip(1);
-        let token_info = $parser.peek_token_info(old_index)?;
+        let token_info = $parser.peek_token_info(old_index);
         let Token::$variant($($field),+) = token_info.token.to_owned() else {
             return Err(format!("({}@{}:{}) expected {} at '{:?}', found: {:?}", file!(), line!(), column!(), stringify!($variant), token_info.start_pos, token_info.token));
         };
@@ -43,8 +43,27 @@ macro_rules! unexpected_token {
 
 #[allow(dead_code)] // Allow helper functions to exist without warnings
 impl Parser {
-    pub fn new(tokens: Vec<TokenInfo>) -> Self {
+    pub fn new(mut tokens: Vec<TokenInfo>) -> Self {
+        // Hack for making up for lack of EOF in tokenizer
+        let eof_pos = tokens
+            .last()
+            .map(|x| x.end_pos.to_owned())
+            .unwrap_or(Position {
+                index: 0,
+                line: 1,
+                column: 1,
+            });
+        tokens.push(TokenInfo {
+            token: Token::EOF,
+            start_pos: eof_pos.clone(),
+            end_pos: eof_pos,
+        });
+
         Self { tokens, index: 0 }
+    }
+
+    fn max_index(&self) -> usize {
+        self.tokens.len() - 1
     }
 
     pub fn tokens(&self) -> &Vec<TokenInfo> {
@@ -52,39 +71,38 @@ impl Parser {
     }
 
     fn set_index(&mut self, index: usize) {
-        self.index = index;
+        self.index = index.min(self.max_index());
     }
 
     fn skip(&mut self, count: usize) {
-        self.index += count;
+        self.set_index(self.index + count);
     }
 
-    fn peek_token_info(&self, index: usize) -> Result<&TokenInfo, String> {
+    fn peek_token_info(&self, index: usize) -> &TokenInfo {
         self.tokens
-            .get(index)
-            .ok_or(format!("failed to peek token info at index: {}", index))
+            .get(index.min(self.max_index()))
+            .expect("No tokens to parse")
     }
 
-    fn current_token_info(&self) -> Result<&TokenInfo, String> {
+    fn current_token_info(&self) -> &TokenInfo {
         self.peek_token_info(self.index)
     }
 
-    fn advance_token_info(&mut self) -> Result<&TokenInfo, String> {
+    fn advance_token_info(&mut self) -> &TokenInfo {
         let old_index = self.index;
         self.skip(1);
         self.peek_token_info(old_index)
     }
 
-    fn peek(&self, index: usize) -> Result<Token, String> {
-        self.peek_token_info(index)
-            .map(|info| info.token.to_owned())
+    fn peek(&self, index: usize) -> Token {
+        self.peek_token_info(index).token.to_owned()
     }
 
-    fn current(&self) -> Result<Token, String> {
+    fn current(&self) -> Token {
         self.peek(self.index)
     }
 
-    fn advance(&mut self) -> Result<Token, String> {
+    fn advance(&mut self) -> Token {
         let old_index = self.index;
         self.skip(1);
         self.peek(old_index)
@@ -94,7 +112,7 @@ impl Parser {
         // advance_expected!(self, LeftParen);
         let mut params: Vec<FunctionParam> = vec![];
         loop {
-            let token = self.current()?;
+            let token = self.current();
             if let Token::RightParen = token {
                 self.skip(1);
                 break;
@@ -118,7 +136,7 @@ impl Parser {
     }
 
     fn parse_type(&mut self) -> Result<Type, String> {
-        let token_info = self.advance_token_info()?;
+        let token_info = self.advance_token_info();
         let result = match &token_info.token {
             Token::Identifier(ident) => Ok(Type::Common(ident.to_owned())),
             Token::Times => Ok(Type::Pointer(Box::new(self.parse_type()?))),
@@ -154,23 +172,12 @@ impl Parser {
         }))
     }
 
-    fn find_token(&mut self, token: Token) -> Option<usize> {
-        for i in self.index..self.tokens.len() {
-            let lookahead_token = self.peek(i).ok()?;
-            if token == lookahead_token {
-                return Some(i);
-            }
-        }
-
-        None
-    }
-
     fn parse_parenthesis_expression(&mut self) -> Result<Expression, String> {
         Err("parenthesis expression not implemented".to_owned())
     }
 
     fn parse_expression(&mut self) -> Result<Expression, String> {
-        let token_info = self.advance_token_info()?;
+        let token_info = self.advance_token_info();
         match token_info.token {
             Token::LeftParen => self.parse_parenthesis_expression(),
             _ => unexpected_token!(token_info),
@@ -178,7 +185,7 @@ impl Parser {
     }
 
     fn parse_identifier(&mut self, ident: String) -> Result<Node, String> {
-        let token_info = self.advance_token_info()?;
+        let token_info = self.advance_token_info();
 
         match token_info.token {
             Token::Colon => self.parse_declaration(ident),
@@ -202,37 +209,23 @@ impl Parser {
         }))
     }
 
-    // Puts the parser in a good spot
-    // after parsing a bad node
-    fn resynchronize(&mut self) {
-        while let Ok(token) = self.current() {
-            self.skip(1);
-            match token {
-                Token::SemiColon | Token::LeftParen | Token::RightCurly => {
-                    break;
-                }
-                _ => {}
-            }
-        }
-    }
-
     fn parse_codeblock(&mut self) -> Result<CodeBlock, String> {
         let mut nodes = vec![];
-        loop {
-            if let Token::RightCurly = self.current()? {
-                break;
-            }
 
+        // TODO: Maybe return partial codeblock on error
+        while !matches!(self.current(), Token::RightCurly) {
             let Some(node) = self.parse() else {
                 return Err(format!(
-                    "({}@{}:{}) unexpected end of input while parsing code block",
+                    "({}@{}:{}) unexpected end of input while parsing code block. last token: {:?}",
                     file!(),
                     line!(),
                     column!(),
+                    nodes.last()
                 ));
             };
             nodes.push(node);
         }
+        self.skip(1); // Skip right curly
         Ok(CodeBlock { nodes })
     }
 
@@ -242,12 +235,12 @@ impl Parser {
     }
 
     fn parse_function(&mut self) -> Result<FunctionDefinition, String> {
-        let token_info = self.advance_token_info()?.clone();
+        let token_info = self.advance_token_info().clone();
         Ok(match token_info.token {
             Token::Identifier(ident) => {
                 advance_expected!(self, LeftParen);
                 let params = self.parse_function_params()?;
-                let return_type = if !matches!(self.current()?, Token::LeftCurly) {
+                let return_type = if !matches!(self.current(), Token::LeftCurly) {
                     Some(self.parse_type()?)
                 } else {
                     None
@@ -284,15 +277,33 @@ impl Parser {
         })
     }
 
+    // Puts the parser in a good spot
+    // after parsing a bad node
+    fn resynchronize(&mut self) {
+        loop {
+            let token = self.current();
+            match token {
+                Token::SemiColon => {
+                    self.skip(1);
+                    break;
+                }
+                Token::RightCurly | Token::EOF => break,
+                _ => {}
+            }
+            self.skip(1);
+        }
+    }
+
     pub fn parse(&mut self) -> Option<NodeInfo> {
         let start_index = self.index;
-        let token_info = self.advance_token_info().ok()?;
+        let token_info = self.advance_token_info();
 
         let result = match token_info.token.to_owned() {
             Token::KwExtern => self.parse_extern(),
             Token::KwFn => self.parse_function_definition(),
             Token::Identifier(ident) => self.parse_identifier(ident),
             Token::LeftCurly => self.parse_codeblock_node(),
+            Token::EOF => return None,
             _ => Err(format!(
                 "({}@{}:{}) invalid root token at '{:?}': {:?}",
                 file!(),

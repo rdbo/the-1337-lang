@@ -10,6 +10,8 @@ pub enum NumberFormat {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
+    EOF,
+
     Unknown(String),
     Comment(String),
 
