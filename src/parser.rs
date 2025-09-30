@@ -180,8 +180,35 @@ impl Parser {
         let token_info = self.advance_token_info();
         match token_info.token {
             Token::LeftParen => self.parse_parenthesis_expression(),
+            Token::String(ref s) => Ok(Expression::String(s.to_owned())),
             _ => unexpected_token!(token_info),
         }
+    }
+
+    fn parse_function_call(&mut self, fn_ident: String) -> Result<Node, String> {
+        let mut args = vec![];
+        if let Token::RightParen = self.current() {
+            self.skip(1); // Skip right parenthesis
+            return Ok(Node::Expression(Expression::FunctionCall {
+                identifier: fn_ident,
+                arguments: args,
+            }));
+        }
+        loop {
+            let arg = self.parse_expression()?;
+            args.push(arg);
+
+            if let Token::RightParen = self.current() {
+                break;
+            }
+            advance_expected!(self, Comma);
+        }
+        self.skip(1); // Skip right parenthesis
+        advance_expected!(self, SemiColon); // TODO: Remove and dont return Node in this function
+        return Ok(Node::Expression(Expression::FunctionCall {
+            identifier: fn_ident,
+            arguments: args,
+        }));
     }
 
     fn parse_identifier(&mut self, ident: String) -> Result<Node, String> {
@@ -193,6 +220,7 @@ impl Parser {
                 identifier: ident,
                 value: Box::new(self.parse_expression()?),
             })),
+            Token::LeftParen => self.parse_function_call(ident),
             _ => unexpected_token!(token_info),
         }
     }
@@ -245,6 +273,7 @@ impl Parser {
                 } else {
                     None
                 };
+                advance_expected!(self, LeftCurly);
                 let code = self.parse_codeblock()?;
                 FunctionDefinition {
                     identifier: Some(ident.to_owned()),
@@ -294,6 +323,7 @@ impl Parser {
         }
     }
 
+    /// Parse a statement
     pub fn parse(&mut self) -> Option<NodeInfo> {
         let start_index = self.index;
         let token_info = self.advance_token_info();

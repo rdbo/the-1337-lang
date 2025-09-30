@@ -47,6 +47,7 @@ pub struct CodeBlock {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Identifier(String),
+    String(String),
     AnonymousFunctionDefinition {
         params: Vec<FunctionParam>,
         return_type: Option<Type>,
@@ -62,7 +63,7 @@ pub enum Expression {
     },
     FunctionCall {
         identifier: String,
-        params: Vec<Expression>,
+        arguments: Vec<Expression>,
     },
     CodeBlock(CodeBlock),
 }
