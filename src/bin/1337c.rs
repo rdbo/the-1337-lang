@@ -25,8 +25,10 @@ fn main() {
     println!("================================");
 
     let mut parser = Parser::new(tokens);
+    let mut nodes = vec![];
     while let Some(node) = parser.parse() {
         println!("{:#?}", node);
+        nodes.push(node);
         // if let Node::Invalid = node.node {
         //     let parsed = &parser.tokens()[node.start_index..node.end_index];
         //     println!("Bad parse: {:?}", parsed);
@@ -34,6 +36,17 @@ fn main() {
     }
 
     println!("================================");
+
+    println!();
+
+    println!("Analyzing...");
+    println!("********************************");
+
+    let analyzer = SemanticAnalyzer::new(&nodes);
+    let program = analyzer.analyze().expect("failed to analyze nodes");
+    println!("{:?}", program);
+
+    println!("********************************");
 
     println!();
 
