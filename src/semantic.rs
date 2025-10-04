@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{CodeBlock, Expression, Node, NodeInfo, Statement, Type};
+use crate::{CodeBlock, Expression, FunctionParam, Node, NodeInfo, Statement, Type};
 
 #[derive(Debug, Clone)]
 pub struct Symbol {
@@ -72,29 +72,36 @@ impl TryFrom<Type> for SemanticType {
 }
 
 #[derive(Debug, Clone)]
-pub struct DefinedFunction {
+pub struct SemanticFunctionDefinition {
     pub name: String,
     pub params: Vec<SemanticFunctionParam>,
-    pub locals: HashMap<String, Symbol>,
+    pub return_type: Option<SemanticType>,
+    pub code: SemanticCodeBlock,
 }
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub global_scope: HashMap<String, Symbol>,
-    pub defined_functions: Vec<DefinedFunction>,
+    pub defined_functions: Vec<SemanticFunctionDefinition>,
+    pub scopes: Vec<HashMap<String, Symbol>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SemanticExpression {
+    pub eval_type: Type,
+    pub expr: Expression,
 }
 
 #[derive(Debug, Clone)]
 pub enum SemanticNode {
-    Invalid(NodeInfo),
     Statement(Statement),
-    Expression { eval_type: Type, expr: Expression },
+    Expression(SemanticExpression),
+    SemanticCodeBlock(SemanticCodeBlock),
 }
 
 #[derive(Debug, Clone)]
-pub struct SemanticNodeInfo {
-    pub semantic_node: SemanticNode,
-    pub index: usize,
+pub struct SemanticCodeBlock {
+    pub locals: HashMap<String, Symbol>,
+    pub nodes: Vec<SemanticNode>,
 }
 
 pub struct SemanticAnalyzer<'a> {
@@ -105,34 +112,98 @@ pub struct SemanticAnalyzer<'a> {
 impl<'a> SemanticAnalyzer<'a> {
     pub fn new(nodes: &'a Vec<NodeInfo>) -> Self {
         let program = Program {
-            global_scope: HashMap::new(),
+            scopes: Vec::from([HashMap::new()]),
             defined_functions: vec![],
         };
 
         Self { program, nodes }
     }
 
+    fn analyze_extern(&mut self, identifier: String, declared_type: Type) -> Result<(), String> {
+        let sem_type = SemanticType::try_from(declared_type)?;
+        self.program
+            .scopes
+            .last_mut()
+            .ok_or("no scope available".to_string())?
+            .insert(
+                identifier.clone(),
+                Symbol {
+                    name: identifier,
+                    sem_type,
+                },
+            );
+
+        Ok(())
+    }
+
+    fn analyze_function_definition(
+        &mut self,
+        identifier: String,
+        params: Vec<FunctionParam>,
+        return_type: Option<Type>,
+        code: CodeBlock,
+    ) -> Result<SemanticFunctionDefinition, String> {
+        let sem_ret_type = if let Some(ret_type) = return_type {
+            SemanticType::try_from(ret_type).ok()
+        } else {
+            None
+        };
+
+        let sem_params = params
+            .into_iter()
+            .map(|p| {
+                SemanticType::try_from(p.declared_type).map(|t| SemanticFunctionParam {
+                    name: p.name,
+                    declared_type: t,
+                })
+            })
+            .collect::<Result<Vec<SemanticFunctionParam>, _>>()?;
+
+        // Push new scope for the function,
+        // initially containing its parameters
+        let scope = sem_params
+            .iter()
+            .map(|p| {
+                (
+                    p.name.clone(),
+                    Symbol {
+                        name: p.name.clone(),
+                        sem_type: p.declared_type.clone(),
+                    },
+                )
+            })
+            .collect::<HashMap<String, Symbol>>();
+
+        // let sem_code = self.analyze_codeblock(code, scope)?; // TODO
+        let sem_code = SemanticCodeBlock {
+            locals: scope,
+            nodes: vec![],
+        };
+
+        Ok(SemanticFunctionDefinition {
+            name: identifier,
+            params: sem_params,
+            return_type: sem_ret_type,
+            code: sem_code,
+        })
+    }
+
     fn analyze_node(&mut self, node: &NodeInfo) -> Result<(), String> {
-        match &node.node {
+        match node.node.clone() {
             Node::Statement(Statement::Extern {
                 identifier,
                 declared_type,
             }) => {
-                let sem_type = SemanticType::try_from(declared_type.clone())?;
-                self.program.global_scope.insert(
-                    identifier.to_owned(),
-                    Symbol {
-                        name: identifier.clone(),
-                        sem_type,
-                    },
-                );
+                self.analyze_extern(identifier, declared_type)?;
             }
             Node::Statement(Statement::FunctionDefinition {
                 identifier,
                 params,
                 return_type,
                 code,
-            }) => {}
+            }) => {
+                self.analyze_function_definition(identifier, params, return_type, code)?;
+            }
 
             n => {
                 return Err(format!("unknown node: {:?}", n));

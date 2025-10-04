@@ -259,7 +259,7 @@ impl Parser {
 
     fn parse_codeblock_node(&mut self) -> Result<Node, String> {
         let codeblock = self.parse_codeblock()?;
-        Ok(Node::Expression(Expression::CodeBlock(codeblock)))
+        Ok(Node::Statement(Statement::CodeBlock(codeblock)))
     }
 
     fn parse_function(&mut self) -> Result<FunctionDefinition, String> {

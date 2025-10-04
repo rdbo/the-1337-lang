@@ -37,6 +37,7 @@ pub enum Statement {
         return_type: Option<Type>,
         code: CodeBlock,
     },
+    CodeBlock(CodeBlock),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,7 +66,6 @@ pub enum Expression {
         identifier: String,
         arguments: Vec<Expression>,
     },
-    CodeBlock(CodeBlock),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
